@@ -68,7 +68,7 @@ Proširuje Supabase `auth.users` tabelu.
 | `full_name` | text NOT NULL | Puno ime |
 | `email` | text NOT NULL | Email adresa |
 | `role` | text NOT NULL DEFAULT 'user' | Uloga: 'user' ili 'admin' |
-| `credits` | integer NOT NULL DEFAULT 20 | Trenutni broj kredita |
+| `credits` | integer NOT NULL DEFAULT 0 | Trenutni broj kredita |
 | `language` | text NOT NULL DEFAULT 'sr' | Jezik: 'sr', 'hr', 'en' |
 | `onboarding_completed` | boolean NOT NULL DEFAULT false | Da li je završio onboarding |
 | `avatar_url` | text | URL avatara |
@@ -255,7 +255,7 @@ auth.users (Supabase)
 
 | Metod | Ruta | Opis |
 |---|---|---|
-| POST | `/api/auth/register` | Registracija (ime, email, lozinka) → kreira profil + 20 kredita |
+| POST | `/api/auth/register` | Registracija (ime, email, lozinka) → kreira profil |
 | POST | `/api/auth/login` | Prijava (email + lozinka) |
 | POST | `/api/auth/logout` | Odjava |
 | POST | `/api/auth/reset-password` | Slanje emaila za reset lozinke |
@@ -350,10 +350,10 @@ Svaka ruta OBAVEZNO prati ovaj redosled:
 | Generisanje teksta | 1 kredit |
 | Generisanje slike (prompt ili upload) | 14 kredita |
 
-### 9.2 Besplatni Krediti
+### 9.2 Krediti pri Registraciji
 
-Novi korisnik dobija **20 besplatnih kredita** pri registraciji.
-Ne postoji besplatan plan — samo plaćeni planovi.
+Novi korisnik dobija **0 kredita** pri registraciji.
+Ne postoji besplatan plan — samo plaćeni planovi. Korisnik mora da se pretplati da bi dobio kredite.
 
 ### 9.3 Mesečni Planovi
 
@@ -674,12 +674,29 @@ OPENAI_API_KEY=
 GOOGLE_GEMINI_API_KEY=
 
 # App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:4000
 ```
 
 ---
 
 ## 17. Faze Razvoja
+
+### Trenutno stanje (Mart 2026)
+
+| Faza | Status | Napomena |
+|------|--------|----------|
+| **1** Plan i arhitektura | ✅ Završeno | `plan.md` |
+| **2** Setup projekta | ✅ Završeno | Next.js 16, Git, dependency-ji |
+| **3** Baza podataka | ✅ Završeno | Migracija pokrenuta u Supabase SQL Editor-u |
+| **4** Autentifikacija | ✅ Završeno | Login, register, reset, onboarding, dashboard, middleware |
+| **5** Glavne funkcije (backend AI) | ⏳ **Sledeća** | API rute za tekst i slike |
+| **6–11** | ⏳ U planu | — |
+
+**Sledeća faza:** **Faza 5** — implementacija `POST /api/generate/*` ruta (OpenAI + Gemini), krediti, čuvanje u `generations`, Storage za upload.
+
+**Admin nalog:** još nije seed-ovan. Uloga `admin` u `profiles` se može ručno postaviti u Supabase (SQL) ili kroz Admin panel u Fazi 8. Middleware već štiti `/admin` rute.
+
+---
 
 ### Faza 1: Plan i Arhitektura ✅ (OVAJ DOKUMENT)
 - [x] Kompletna arhitektura aplikacije
@@ -690,32 +707,36 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [x] Uključene tabele za plaćanje
 - [x] Definisani edge case-ovi
 
-### Faza 2: Setup Projekta
-- [ ] Inicijalizacija Next.js projekta sa TypeScript-om
-- [ ] Instalacija svih dependency-ja
-- [ ] Konfiguracija Tailwind CSS-a
-- [ ] Kreiranje strukture foldera
-- [ ] Kreiranje .env.example
-- [ ] Inicijalizacija Git repozitorijuma
+### Faza 2: Setup Projekta ✅
+- [x] Inicijalizacija Next.js projekta sa TypeScript-om
+- [x] Instalacija svih dependency-ja
+- [x] Konfiguracija Tailwind CSS-a
+- [x] Kreiranje strukture foldera
+- [x] Kreiranje .env.example
+- [x] Inicijalizacija Git repozitorijuma (Git instaliran, prvi commit)
+- [x] Lib sloj: Supabase klijenti, Stripe/OpenAI/Gemini stubovi, krediti, rate-limit, validacija, i18n (sr/hr/en)
 
-### Faza 3: Baza Podataka
-- [ ] SQL migracija za sve tabele
-- [ ] RLS politike za svaku tabelu
-- [ ] Storage bucket-i (uploads, generated, logos, avatars)
-- [ ] Trigger za automatski updated_at
-- [ ] Trigger za kreiranje profila pri registraciji
-- [ ] Seed admin korisnika
-- [ ] Dokumentacija za Supabase setup
+### Faza 3: Baza Podataka ✅
+- [x] SQL migracija za sve tabele (`supabase/migrations/001_initial_schema.sql` — pokrenuta u Dashboard-u)
+- [x] RLS politike za svaku tabelu
+- [x] Storage bucket-i (uploads, generated, logos, avatars) + politike u migraciji
+- [x] Trigger za automatski updated_at
+- [x] Trigger za kreiranje profila pri registraciji (0 kredita, bez `initial_free` transakcije)
+- [ ] Seed admin korisnika (ručno: `UPDATE profiles SET role = 'admin' WHERE email = '...'` ili u Fazi 8)
+- [x] Supabase setup: URL + anon + service_role u `.env.local`; email potvrda isključena za dev test
 
-### Faza 4: Autentifikacija
-- [ ] Supabase Auth setup (server + client)
-- [ ] Registracija → kreiranje profila + 20 kredita
-- [ ] Login (email + lozinka)
-- [ ] Logout
-- [ ] Reset lozinke (slanje emaila + postavljanje nove)
-- [ ] Middleware za zaštitu ruta
-- [ ] Role-based pristup (user vs admin)
-- [ ] Redirect logika (neautentifikovan → login, bez onboardinga → onboarding)
+### Faza 4: Autentifikacija ✅
+- [x] Supabase Auth setup (server + client + `@supabase/ssr`)
+- [x] Registracija → kreiranje profila preko DB triggera (0 kredita)
+- [x] Login (email + lozinka)
+- [x] Logout (dashboard dugme)
+- [x] Reset lozinke (email link → `/update-password`)
+- [x] Middleware za zaštitu ruta + osvežavanje sesije
+- [x] Role-based pristup (`/admin/*` samo za `role = admin`; nema seed admina dok ga ne dodaš)
+- [x] Redirect logika (neautentifikovan → login, bez onboardinga → onboarding)
+- [x] Onboarding UI (3 koraka) + upis u `businesses` + `onboarding_completed`
+- [x] Dashboard (osnovni): krediti, prečice, link ka planovima, odjava
+- [x] Ispravljen `NEXT_PUBLIC_SUPABASE_URL` (mora biti `https://<ref>.supabase.co`, ne JWT)
 
 ### Faza 5: Glavne Funkcije — Samo Backend
 - [ ] POST /api/generate/text (OpenAI GPT-5.4)
@@ -757,24 +778,25 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [ ] GET /api/admin/logs (logovi admin akcija)
 - [ ] Logovanje svake admin akcije
 
-### Faza 9: Frontend Dizajn
-- [ ] Landing stranica
-- [ ] Auth stranice (login, register, reset)
-- [ ] Onboarding (višekoračni)
-- [ ] Dashboard sa prečicama i prikazom kredita
-- [ ] Stranice za generisanje (tekst, slika iz prompta, slika iz uploada)
+### Faza 9: Frontend Dizajn (delimično — funkcionalno pre finalnog dizajna)
+- [x] Landing stranica (osnovni CTA: registruj / prijavi / cene — nije finalni prodajni dizajn)
+- [x] Auth stranice (login, register, reset, update-password) — funkcionalno, minimalistički
+- [x] Onboarding (višekoračni) — funkcionalno
+- [x] Dashboard sa prečicama i prikazom kredita — osnovni layout
+- [ ] Stranice za generisanje (trenutno placeholder stranice — dolazi posle Faze 5)
 - [ ] Istorija generisanja
 - [ ] Analitika
 - [ ] Podešavanja (profil, brend, pretplata)
 - [ ] Pricing stranica/modal
 - [ ] Admin stranice (dashboard, korisnici, logovi)
-- [ ] Implementacija i18n (sr, hr, en)
-- [ ] Responsive dizajn (mobilni + desktop)
-- [ ] Loading / Success / Error / Empty stanja na svakoj stranici
-- [ ] Toast notifikacije
-- [ ] Minimalistički dizajn (sivo-belo, crno-plavo)
+- [ ] i18n u UI (rečnici `sr` / `hr` / `en` već postoje u `src/lib/i18n/`)
+- [ ] Responsive: potpuna provera svih ekrana (osnovni Tailwind na auth/onboarding/dashboard)
+- [ ] Loading / Success / Error / Empty stanja na svakoj stranici (strogo po planu)
+- [x] Toast: `sonner` u root `layout.tsx` (spremno za upotrebu u formama)
+- [ ] Finalni minimalistički vizuelni polish (sivo-belo, crno-plavo) kao na prototipu
 
 ### Faza 10: Testiranje
+- [x] Ručno: registracija → onboarding → dashboard → odjava (potvrđeno, mart 2026)
 - [ ] Kompletan tok: registracija → onboarding → generisanje → plaćanje
 - [ ] Edge case testovi (nedovoljno kredita, prevelik fajl, itd.)
 - [ ] Stripe webhook testiranje (idempotentnost, razni eventi)
@@ -800,4 +822,4 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 4. **DEV i PROD odvojeni** — Različite baze, različiti ključevi
 5. **AI modeli se NE menjaju** — GPT-5.4 za tekst, Gemini-3-Pro-Image-Preview za slike
 6. **Krediti se resetuju mesečno** — Neiskorišćeni se gube
-7. **Nema besplatnog plana** — Samo plaćeni planovi + 20 početnih kredita
+7. **Nema besplatnog plana** — Samo plaćeni planovi, bez besplatnih kredita

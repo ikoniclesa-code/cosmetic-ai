@@ -6,7 +6,7 @@ export const CREDIT_COSTS = {
   image_from_upload: 14,
 } as const;
 
-export const INITIAL_FREE_CREDITS = 20;
+export const INITIAL_FREE_CREDITS = 0;
 
 export type GenerationType = keyof typeof CREDIT_COSTS;
 

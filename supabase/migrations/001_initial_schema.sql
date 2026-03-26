@@ -9,7 +9,7 @@ CREATE TABLE public.profiles (
   full_name text NOT NULL,
   email text NOT NULL,
   role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  credits integer NOT NULL DEFAULT 20,
+  credits integer NOT NULL DEFAULT 0,
   language text NOT NULL DEFAULT 'sr' CHECK (language IN ('sr', 'hr', 'en')),
   onboarding_completed boolean NOT NULL DEFAULT false,
   avatar_url text,
@@ -146,15 +146,7 @@ BEGIN
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
     NEW.email,
-    20
-  );
-
-  INSERT INTO public.credit_transactions (user_id, amount, type, description)
-  VALUES (
-    NEW.id,
-    20,
-    'initial_free',
-    'Welcome bonus: 20 free credits'
+    0
   );
 
   RETURN NEW;
