@@ -681,7 +681,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 
 ## 17. Faze Razvoja
 
-### Trenutno stanje (Mart 2026)
+### Trenutno stanje (April 2026)
 
 | Faza | Status | Napomena |
 |------|--------|----------|
@@ -689,10 +689,11 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 | **2** Setup projekta | ✅ Završeno | Next.js 16, Git, dependency-ji |
 | **3** Baza podataka | ✅ Završeno | Migracija pokrenuta u Supabase SQL Editor-u |
 | **4** Autentifikacija | ✅ Završeno | Login, register, reset, onboarding, dashboard, middleware |
-| **5** Glavne funkcije (backend AI) | ⏳ **Sledeća** | API rute za tekst i slike |
-| **6–11** | ⏳ U planu | — |
+| **5** Glavne funkcije (backend AI) | ✅ Završeno | API rute za tekst i slike |
+| **6** Error Handling i Edge Case-ovi | ⏳ **Sledeća** | Rate limiting, validacija, timeout |
+| **7–11** | ⏳ U planu | — |
 
-**Sledeća faza:** **Faza 5** — implementacija `POST /api/generate/*` ruta (OpenAI + Gemini), krediti, čuvanje u `generations`, Storage za upload.
+**Sledeća faza:** **Faza 6** — Error Handling, rate limiting, validacija, timeout zaštita, poruke grešaka na sva 3 jezika.
 
 **Admin nalog:** još nije seed-ovan. Uloga `admin` u `profiles` se može ručno postaviti u Supabase (SQL) ili kroz Admin panel u Fazi 8. Middleware već štiti `/admin` rute.
 
@@ -738,17 +739,23 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 - [x] Dashboard (osnovni): krediti, prečice, link ka planovima, odjava
 - [x] Ispravljen `NEXT_PUBLIC_SUPABASE_URL` (mora biti `https://<ref>.supabase.co`, ne JWT)
 
-### Faza 5: Glavne Funkcije — Samo Backend
-- [ ] POST /api/generate/text (OpenAI GPT-5.4)
-- [ ] POST /api/generate/image-from-prompt (Gemini-3-Pro-Image-Preview)
-- [ ] POST /api/generate/image-from-upload (Gemini-3-Pro-Image-Preview)
-- [ ] Provera autentifikacije u svakoj ruti
-- [ ] Provera kredita pre generisanja
-- [ ] Čuvanje rezultata u bazu (generations tabela)
-- [ ] Oduzimanje kredita posle uspešnog generisanja
-- [ ] Retry logika (max 3 pokušaja)
-- [ ] Fallback poruke pri greški AI servisa
-- [ ] Upload fajlova u Supabase Storage
+### Faza 5: Glavne Funkcije — Samo Backend ✅
+- [x] POST /api/generate/text (OpenAI GPT-5.4)
+- [x] POST /api/generate/image-from-prompt (Gemini-3-Pro-Image-Preview)
+- [x] POST /api/generate/image-from-upload (Gemini-3-Pro-Image-Preview)
+- [x] Provera autentifikacije u svakoj ruti
+- [x] Provera kredita pre generisanja
+- [x] Čuvanje rezultata u bazu (generations tabela)
+- [x] Oduzimanje kredita posle uspešnog generisanja
+- [x] Retry logika — OpenAI: 3 pokušaja (1s, 2s, 4s); Gemini: 5 pokušaja (4s, 8s, 16s, 32s)
+- [x] Fallback poruke pri greški AI servisa — generacija se markira kao `failed`, krediti se NE oduzimaju
+- [x] Upload fajlova u Supabase Storage — privatni bucket-i, signed URL (365 dana)
+- [x] Gemini `gemini.ts` ažuriran: `responseModalities`, `buildImageParts`, `extractImageFromResponse`
+- [x] Business context se automatski uključuje u prompt (ime, industrija, ton, ciljna grupa)
+- [x] TypeScript kompilacija: 0 grešaka
+- [x] RLS Fix: `002_fix_rls_recursion.sql` — `is_admin()` SECURITY DEFINER funkcija (rešava rekurziju)
+- [x] Frontend forme za generisanje: `/create/text`, `/create/image`, `/create/image-from-upload`
+- [x] Testiran tok: prompt → AI → slika generisana → krediti oduzeti
 
 ### Faza 6: Error Handling i Edge Case-ovi
 - [ ] Rate limiting na svim generisanje rutama
