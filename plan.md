@@ -692,12 +692,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 | **5** Glavne funkcije (backend AI) | ✅ Završeno | API rute za tekst i slike |
 | **7** Plaćanje (Stripe) | ✅ Završeno | Checkout, webhook, portal, pricing stranica |
 | **6** Error Handling i Edge Case-ovi | ✅ Završeno | Rate limiting, validacija, timeout, i18n poruke |
-| **8–11** | ⏳ U planu | — |
+| **8** Admin Panel | ✅ Završeno | API rute + helper + logovanje |
+| **9–11** | ⏳ U planu | — |
 
-**Sledeća faza:** **Faza 8** — Admin Panel (API rute + funkcionalnost).
+**Sledeća faza:** **Faza 9** — Frontend Dizajn (UI za sve stranice).
 **Napomena:** Faze 6 i 7 su urađene van redosleda jer su nezavisne.
 
-**Admin nalog:** još nije seed-ovan. Uloga `admin` u `profiles` se može ručno postaviti u Supabase (SQL) ili kroz Admin panel u Fazi 8. Middleware već štiti `/admin` rute.
+**Admin nalog:** još nije seed-ovan. Uloga `admin` u `profiles` se može ručno postaviti u Supabase (SQL): `UPDATE profiles SET role = 'admin' WHERE email = 'tvoj@email.com';`. Middleware već štiti `/admin` rute.
 
 ---
 
@@ -786,14 +787,16 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 - [x] Svi Stripe env ključevi konfigurisani (.env.local)
 - [x] TypeScript kompilacija: 0 grešaka
 
-### Faza 8: Admin Panel — Samo Funkcionalnost
-- [ ] GET /api/admin/users (lista + pretraga)
-- [ ] GET /api/admin/users/[id] (detalji)
-- [ ] PUT /api/admin/users/[id]/credits (korekcija kredita)
-- [ ] POST /api/admin/users/[id]/impersonate (prijava kao korisnik)
-- [ ] GET /api/admin/stats (globalna statistika)
-- [ ] GET /api/admin/logs (logovi admin akcija)
-- [ ] Logovanje svake admin akcije
+### Faza 8: Admin Panel — Samo Funkcionalnost ✅
+- [x] `requireAdmin()` helper + `logAdminAction()` → `src/lib/admin.ts`
+- [x] GET /api/admin/users (lista + pretraga + paginacija + sortiranje + subscription enrichment)
+- [x] GET /api/admin/users/[id] (detalji: profil, pretplata, biznis, generacije, kredit istorija, statistika)
+- [x] PUT /api/admin/users/[id]/credits (korekcija kredita sa razlogom, koristi `addCredits()`)
+- [x] POST /api/admin/users/[id]/impersonate (magic link za prijavu kao korisnik)
+- [x] GET /api/admin/stats (ukupno korisnika, aktivne pretplate, generacije, utrošeni krediti, plan breakdown, nedavne registracije)
+- [x] GET /api/admin/logs (logovi admin akcija sa paginacijom, filtriranjem, enriched admin/target profili)
+- [x] Logovanje svake admin akcije u `admin_logs` tabelu (view_stats, list_users, view_user, credit_adjustment, impersonate)
+- [x] TypeScript kompilacija: 0 grešaka
 
 ### Faza 9: Frontend Dizajn (delimično — funkcionalno pre finalnog dizajna)
 - [x] Landing stranica (osnovni CTA: registruj / prijavi / cene — nije finalni prodajni dizajn)

@@ -52,7 +52,7 @@ export interface Database {
           id: string;
           user_id: string;
           name: string | null;
-          industry: "cosmetics" | "home_chemistry" | null;
+          industry: "cosmetics" | "home_chemistry" | "both" | null;
           logo_url: string | null;
           description: string | null;
           target_audience: string | null;
@@ -65,7 +65,7 @@ export interface Database {
           id?: string;
           user_id: string;
           name?: string | null;
-          industry?: "cosmetics" | "home_chemistry" | null;
+          industry?: "cosmetics" | "home_chemistry" | "both" | null;
           logo_url?: string | null;
           description?: string | null;
           target_audience?: string | null;
@@ -77,7 +77,7 @@ export interface Database {
         Update: {
           user_id?: string;
           name?: string | null;
-          industry?: "cosmetics" | "home_chemistry" | null;
+          industry?: "cosmetics" | "home_chemistry" | "both" | null;
           logo_url?: string | null;
           description?: string | null;
           target_audience?: string | null;

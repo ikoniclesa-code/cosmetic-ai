@@ -11,6 +11,13 @@ interface SubscriptionData {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  derived_status?:
+    | "none"
+    | "active"
+    | "canceling"
+    | "past_due"
+    | "canceled"
+    | "incomplete";
 }
 
 const PLAN_NAMES: Record<string, string> = {
@@ -71,6 +78,13 @@ export default function SubscriptionPage() {
   }
 
   function getStatusBadge(sub: SubscriptionData) {
+    if (sub.derived_status === "canceling") {
+      return {
+        label: `Otkazuje se — važi do ${formatDate(sub.current_period_end)}`,
+        color: "bg-yellow-50 text-yellow-700 border-yellow-200",
+      };
+    }
+
     if (sub.cancel_at_period_end && sub.status === "active") {
       const periodEnd = sub.current_period_end
         ? new Date(sub.current_period_end)
@@ -114,20 +128,18 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <Link
-            href="/settings"
-            className="text-sm text-gray-500 hover:text-gray-900"
-          >
-            &larr; Podešavanja
-          </Link>
-          <h1 className="text-lg font-bold text-gray-900">Pretplata</h1>
-        </div>
-      </header>
+    <main className="mx-auto w-full max-w-4xl space-y-6">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/settings"
+          className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          &larr; Podešavanja
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Pretplata</h1>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div>
         {loading && (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
@@ -141,11 +153,11 @@ export default function SubscriptionPage() {
         )}
 
         {!loading && !subscription && (
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-[#0f162d]">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">
               Nemate aktivnu pretplatu
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-gray-500 mb-6 dark:text-gray-400">
               Izaberite plan da biste dobili kredite i počeli da kreirate
               sadržaj.
             </p>
@@ -160,14 +172,14 @@ export default function SubscriptionPage() {
 
         {!loading && subscription && (
           <div className="space-y-6">
-            <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-[#0f162d]">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {PLAN_NAMES[subscription.plan_type] || subscription.plan_type}{" "}
                     plan
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
                     {subscription.billing_cycle === "monthly"
                       ? "Mesečna pretplata"
                       : "Godišnja pretplata"}
@@ -176,34 +188,45 @@ export default function SubscriptionPage() {
                 <span
                   className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadge(subscription).color}`}
                 >
+                  <span
+                    className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
+                      subscription.derived_status === "canceling"
+                        ? "bg-yellow-500"
+                        : subscription.status === "active"
+                        ? "bg-green-500"
+                        : subscription.status === "past_due"
+                          ? "bg-red-500"
+                          : "bg-gray-400"
+                    }`}
+                  />
                   {getStatusBadge(subscription).label}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-6">
                 <div>
-                  <p className="text-xs text-gray-500">Mesečni krediti</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Mesečni krediti</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1 dark:text-gray-100">
                     {subscription.monthly_credits.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Ciklus plaćanja</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Ciklus plaćanja</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1 dark:text-gray-100">
                     {subscription.billing_cycle === "monthly"
                       ? "Mesečno"
                       : "Godišnje"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Početak perioda</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Početak perioda</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1 dark:text-gray-100">
                     {formatDate(subscription.current_period_start)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Kraj perioda</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Kraj perioda</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1 dark:text-gray-100">
                     {formatDate(subscription.current_period_end)}
                   </p>
                 </div>
@@ -241,7 +264,7 @@ export default function SubscriptionPage() {
                 </p>
                 <Link
                   href="/pricing"
-                  className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   Pogledajte planove &rarr;
                 </Link>
@@ -249,10 +272,16 @@ export default function SubscriptionPage() {
             )}
 
             <div className="flex gap-3">
+              <Link
+                href="/settings"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Nazad na podesavanja
+              </Link>
               <button
                 onClick={openPortal}
                 disabled={portalLoading}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 {portalLoading
                   ? "Otvaranje..."

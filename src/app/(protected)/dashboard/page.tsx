@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { LogoutButton } from "./logout-button";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -54,39 +53,36 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Cosmetic AI</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">
-              {profile?.full_name || user.email}
-            </span>
+    <main>
+      <div className="mx-auto max-w-6xl py-4">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Dobrodošli, {profile?.full_name?.split(" ")[0] || "korisniče"}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              Šta želite da kreirate danas?
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             {hasSub && (
               <Link
                 href="/settings/subscription"
-                className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 {planNames[subscription.plan_type] || subscription.plan_type}
               </Link>
             )}
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-              {profile?.credits ?? 0} kredita
-            </span>
             {profile?.role === "admin" && (
               <Link
                 href="/admin"
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 Admin
               </Link>
             )}
-            <LogoutButton />
           </div>
         </div>
-      </header>
-
-      <div className="max-w-5xl mx-auto px-4 py-8">
         {!hasSub && (
           <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-center justify-between">
             <p className="text-sm text-blue-800">
@@ -144,11 +140,6 @@ export default async function DashboardPage() {
             </Link>
           </div>
         )}
-
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">
-          Dobrodošli, {profile?.full_name?.split(" ")[0] || "korisniče"}
-        </h2>
-        <p className="text-gray-500 mb-8">Šta želite da kreirate danas?</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link

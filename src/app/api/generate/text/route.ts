@@ -252,9 +252,13 @@ async function getBusinessContext(
   const parts: string[] = [];
   if (business.name) parts.push(`Brand: ${business.name}`);
   if (business.industry) {
-    parts.push(
-      `Industry: ${business.industry === "cosmetics" ? "Cosmetics & Beauty" : "Household Cleaning & Home Chemistry"}`
-    );
+    const industryLabel =
+      business.industry === "cosmetics"
+        ? "Cosmetics & Beauty"
+        : business.industry === "home_chemistry"
+          ? "Household Cleaning & Home Chemistry"
+          : "Cosmetics & Beauty + Household Cleaning & Home Chemistry";
+    parts.push(`Industry: ${industryLabel}`);
   }
   if (business.description) parts.push(`Description: ${business.description}`);
   if (business.target_audience)

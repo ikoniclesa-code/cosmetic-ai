@@ -39,7 +39,7 @@ export interface LoginRequest {
 
 export interface OnboardingRequest {
   name?: string;
-  industry?: "cosmetics" | "home_chemistry";
+  industry?: "cosmetics" | "home_chemistry" | "both";
   description?: string;
   targetAudience?: string;
   communicationTone?: string;

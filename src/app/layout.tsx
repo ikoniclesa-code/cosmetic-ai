@@ -13,9 +13,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeInitScript = `
+    (function () {
+      try {
+        var key = 'cosmetic-ai-theme';
+        var mode = localStorage.getItem(key) || 'system';
+        var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = mode === 'dark' || (mode === 'system' && systemDark);
+        document.documentElement.classList.toggle('dark', dark);
+      } catch (e) {}
+    })();
+  `;
+
   return (
-    <html lang="sr">
+    <html lang="sr" suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {children}
         <Toaster position="top-right" richColors closeButton />
       </body>

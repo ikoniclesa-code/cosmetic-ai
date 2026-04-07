@@ -2,6 +2,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 
 type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
+export type DerivedSubscriptionStatus =
+  | "none"
+  | "active"
+  | "canceling"
+  | "past_due"
+  | "canceled"
+  | "incomplete";
 
 export interface SubscriptionStatus {
   hasAccess: boolean;
@@ -12,6 +19,26 @@ export interface SubscriptionStatus {
   currentPeriodEnd: string | null;
   monthlyCredits: number;
   message: string | null;
+}
+
+export function getDerivedSubscriptionStatus(
+  subscription: SubscriptionRow | null
+): DerivedSubscriptionStatus {
+  if (!subscription) return "none";
+
+  const periodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end)
+    : null;
+  const isPeriodValid = periodEnd ? new Date() < periodEnd : false;
+
+  if (subscription.status === "active" && subscription.cancel_at_period_end) {
+    return isPeriodValid ? "canceling" : "canceled";
+  }
+
+  if (subscription.status === "active") return "active";
+  if (subscription.status === "past_due") return "past_due";
+  if (subscription.status === "canceled") return "canceled";
+  return "incomplete";
 }
 
 export async function checkSubscriptionAccess(

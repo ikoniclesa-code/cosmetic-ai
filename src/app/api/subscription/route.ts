@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getDerivedSubscriptionStatus } from "@/lib/subscription";
 import type { ApiResponse } from "@/types/api";
+import type { Database } from "@/types/database";
+
+type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 
 export async function GET() {
   try {
@@ -19,15 +23,25 @@ export async function GET() {
     }
 
     const adminSupabase = createAdminClient();
-    const { data: subscription } = await adminSupabase
+    const { data: subscriptionData } = await adminSupabase
       .from("subscriptions")
       .select("*")
       .eq("user_id", user.id)
       .single();
 
+    const subscription = (subscriptionData ?? null) as SubscriptionRow | null;
+    const derivedStatus = getDerivedSubscriptionStatus(subscription || null);
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: { subscription: subscription || null },
+      data: {
+        subscription: subscription
+          ? {
+              ...subscription,
+              derived_status: derivedStatus,
+            }
+          : null,
+      },
     });
   } catch (error) {
     return NextResponse.json<ApiResponse>(

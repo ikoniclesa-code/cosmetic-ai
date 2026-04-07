@@ -285,11 +285,13 @@ async function buildEnhancedPrompt(
 
   if (business) {
     if (business.industry) {
-      contextParts.push(
+      const industryStyle =
         business.industry === "cosmetics"
           ? "Style: professional cosmetics/beauty product photography"
-          : "Style: clean household product photography"
-      );
+          : business.industry === "home_chemistry"
+            ? "Style: clean household product photography"
+            : "Style: blend premium cosmetics aesthetics with clean household product clarity";
+      contextParts.push(industryStyle);
     }
     if (business.name) {
       contextParts.push(`Brand: ${business.name}`);

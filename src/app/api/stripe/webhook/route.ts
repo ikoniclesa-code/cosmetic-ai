@@ -3,7 +3,7 @@ import { stripe, PLAN_CREDITS } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { addCredits } from "@/lib/credits";
 import type Stripe from "stripe";
-import type { Json } from "@/types/database";
+import type { Json, Database } from "@/types/database";
 
 type PlanType = "starter" | "pro" | "pro_plus";
 type BillingCycle = "monthly" | "yearly";
@@ -201,10 +201,6 @@ async function handleInvoicePaid(
   const subscriptionId = getSubscriptionId(invoice);
   if (!subscriptionId) return;
 
-  if (invoice.billing_reason === "subscription_create") {
-    return;
-  }
-
   const sub = await getSubscriptionData(subscriptionId);
   const userId = sub.metadata?.supabase_user_id;
   if (!userId) return;
@@ -214,29 +210,56 @@ async function handleInvoicePaid(
     "monthly") as BillingCycle;
   const monthlyCredits = PLAN_CREDITS[planType] || 0;
 
-  const updateData: Record<string, unknown> = {
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : null;
+  const isInitialInvoice = invoice.billing_reason === "subscription_create";
+  let resolvedCustomerId = customerId;
+  if (!resolvedCustomerId) {
+    const { data: existingSub } = await supabase
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", userId)
+      .single();
+    resolvedCustomerId = existingSub?.stripe_customer_id || null;
+  }
+  if (!resolvedCustomerId) {
+    return;
+  }
+
+  const subscriptionUpsert: Database["public"]["Tables"]["subscriptions"]["Insert"] = {
+    user_id: userId,
+    stripe_subscription_id: subscriptionId,
+    stripe_customer_id: resolvedCustomerId,
+    plan_type: planType,
+    billing_cycle: billingCycle,
+    monthly_credits: monthlyCredits,
     status: "active",
+    cancel_at_period_end: sub.cancel_at_period_end ?? false,
   };
   if (sub.current_period_start) {
-    updateData.current_period_start = new Date(
+    subscriptionUpsert.current_period_start = new Date(
       sub.current_period_start * 1000
     ).toISOString();
   }
   if (sub.current_period_end) {
-    updateData.current_period_end = new Date(
+    subscriptionUpsert.current_period_end = new Date(
       sub.current_period_end * 1000
     ).toISOString();
   }
 
   await supabase
     .from("subscriptions")
-    .update(updateData)
-    .eq("user_id", userId);
+    .upsert(subscriptionUpsert, { onConflict: "user_id" });
 
-  await supabase
-    .from("profiles")
-    .update({ credits: monthlyCredits })
-    .eq("id", userId);
+  // Initial credits are already granted in checkout.session.completed.
+  // We still upsert subscription period dates above so UI can display them.
+  if (isInitialInvoice) {
+    return;
+  }
+
+  await supabase.from("profiles").update({ credits: monthlyCredits }).eq("id", userId);
 
   await addCredits(
     userId,
