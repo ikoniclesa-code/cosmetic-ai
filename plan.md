@@ -690,10 +690,12 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 | **3** Baza podataka | ✅ Završeno | Migracija pokrenuta u Supabase SQL Editor-u |
 | **4** Autentifikacija | ✅ Završeno | Login, register, reset, onboarding, dashboard, middleware |
 | **5** Glavne funkcije (backend AI) | ✅ Završeno | API rute za tekst i slike |
-| **6** Error Handling i Edge Case-ovi | ⏳ **Sledeća** | Rate limiting, validacija, timeout |
-| **7–11** | ⏳ U planu | — |
+| **7** Plaćanje (Stripe) | ✅ Završeno | Checkout, webhook, portal, pricing stranica |
+| **6** Error Handling i Edge Case-ovi | ✅ Završeno | Rate limiting, validacija, timeout, i18n poruke |
+| **8–11** | ⏳ U planu | — |
 
-**Sledeća faza:** **Faza 6** — Error Handling, rate limiting, validacija, timeout zaštita, poruke grešaka na sva 3 jezika.
+**Sledeća faza:** **Faza 8** — Admin Panel (API rute + funkcionalnost).
+**Napomena:** Faze 6 i 7 su urađene van redosleda jer su nezavisne.
 
 **Admin nalog:** još nije seed-ovan. Uloga `admin` u `profiles` se može ručno postaviti u Supabase (SQL) ili kroz Admin panel u Fazi 8. Middleware već štiti `/admin` rute.
 
@@ -757,24 +759,32 @@ NEXT_PUBLIC_APP_URL=http://localhost:4000
 - [x] Frontend forme za generisanje: `/create/text`, `/create/image`, `/create/image-from-upload`
 - [x] Testiran tok: prompt → AI → slika generisana → krediti oduzeti
 
-### Faza 6: Error Handling i Edge Case-ovi
-- [ ] Rate limiting na svim generisanje rutama
-- [ ] Validacija ulaznih podataka (prompt, fajl veličina, format)
-- [ ] Zaštita od duplog klika
-- [ ] Obuhvatne poruke grešaka na sva 3 jezika
-- [ ] Fallback za AI servis kvarove
-- [ ] Timeout zaštita (60s)
-- [ ] Validacija na frontendu i backendu
+### Faza 6: Error Handling i Edge Case-ovi ✅
+- [x] Rate limiting na svim generisanje rutama + Stripe checkout/portal rutama
+- [x] Validacija ulaznih podataka (prompt min/max, fajl veličina, format) — backend + frontend
+- [x] Zaštita od duplog klika — `disabled` atribut + `loading` state sprečava re-submit
+- [x] Obuhvatne poruke grešaka na sva 3 jezika (sr/hr/en) — prošireni `errors` sekcija u i18n
+- [x] Fallback za AI servis kvarove — retry logika + `failed` status, krediti se NE oduzimaju
+- [x] Timeout zaštita (60s) — `withTimeout()` wrapper na svim AI pozivima, 504 status za timeout
+- [x] Validacija na frontendu i backendu — karakter counter, inline validacija, `mapApiErrorToKey()`
+- [x] Frontend error mapiranje po HTTP status kodu (401/402/403/429/502/504)
+- [x] `validation.ts` refaktorisan: vraća i18n ključeve umesto hardkodiranih stringova
 
-### Faza 7: Plaćanje (Stripe)
-- [ ] Kreiranje Stripe proizvoda i cena (6 price-ova: 3 plana × 2 ciklusa)
-- [ ] POST /api/stripe/create-checkout
-- [ ] POST /api/stripe/webhook (idempotentna obrada)
-- [ ] POST /api/stripe/create-portal
-- [ ] Obrada webhook evenata (invoice.paid, subscription.updated, itd.)
-- [ ] Mesečni reset kredita pri obnovi pretplate
-- [ ] Upravljanje statusima pretplate
-- [ ] Success/cancel redirect stranice
+### Faza 7: Plaćanje (Stripe) ✅
+- [x] Kreiranje Stripe proizvoda i cena (6 price-ova: 3 plana × 2 ciklusa) — u Stripe Dashboard-u
+- [x] POST /api/stripe/create-checkout — kreira Checkout sesiju, Stripe Customer, metadata
+- [x] POST /api/stripe/webhook — idempotentna obrada (stripe_events tabela), potpis verifikacija
+- [x] POST /api/stripe/create-portal — Stripe Customer Portal za upravljanje pretplatom
+- [x] GET /api/subscription — podaci o pretplati korisnika
+- [x] Obrada webhook evenata: checkout.session.completed, invoice.paid, invoice.payment_failed, subscription.updated, subscription.deleted
+- [x] Mesečni reset kredita pri obnovi pretplate (invoice.paid → profiles.credits = monthly_credits)
+- [x] Upravljanje statusima pretplate (active, past_due, canceled, incomplete)
+- [x] Success stranica (`/pricing/success`) + cancel redirect na `/pricing`
+- [x] Pricing stranica sa planovima, mesečno/godišnje toggle, checkout dugmadima
+- [x] `stripe.ts` ažuriran: STRIPE_PRICE_MAP, PLAN_CREDITS, getPriceId
+- [x] Middleware: `/pricing/success` dodat u javne rute
+- [x] Svi Stripe env ključevi konfigurisani (.env.local)
+- [x] TypeScript kompilacija: 0 grešaka
 
 ### Faza 8: Admin Panel — Samo Funkcionalnost
 - [ ] GET /api/admin/users (lista + pretraga)

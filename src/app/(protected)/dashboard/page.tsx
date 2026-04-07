@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { LogoutButton } from "./logout-button";
 
 export default async function DashboardPage() {
@@ -19,6 +20,39 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
+  const adminSupabase = createAdminClient();
+  const { data: subscription } = await adminSupabase
+    .from("subscriptions")
+    .select("plan_type, status, cancel_at_period_end, current_period_end")
+    .eq("user_id", user.id)
+    .single();
+
+  const planNames: Record<string, string> = {
+    starter: "Starter",
+    pro: "Pro",
+    pro_plus: "Pro+",
+  };
+
+  const hasSub = !!subscription;
+  const isActive =
+    subscription?.status === "active" && !subscription?.cancel_at_period_end;
+  const isCanceling =
+    subscription?.status === "active" && subscription?.cancel_at_period_end;
+  const periodEnd = subscription?.current_period_end
+    ? new Date(subscription.current_period_end)
+    : null;
+  const periodStillValid = periodEnd ? new Date() < periodEnd : false;
+  const canGenerate = isActive || (isCanceling && periodStillValid);
+
+  function formatDate(dateStr: string | null): string {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("sr-Latn-RS", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -28,6 +62,14 @@ export default async function DashboardPage() {
             <span className="text-sm text-gray-500">
               {profile?.full_name || user.email}
             </span>
+            {hasSub && (
+              <Link
+                href="/settings/subscription"
+                className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                {planNames[subscription.plan_type] || subscription.plan_type}
+              </Link>
+            )}
             <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
               {profile?.credits ?? 0} kredita
             </span>
@@ -45,6 +87,64 @@ export default async function DashboardPage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {!hasSub && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-center justify-between">
+            <p className="text-sm text-blue-800">
+              Nemate aktivnu pretplatu. Izaberite plan da biste dobili kredite.
+            </p>
+            <Link
+              href="/pricing"
+              className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Izaberite plan
+            </Link>
+          </div>
+        )}
+
+        {isCanceling && periodStillValid && (
+          <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-center justify-between">
+            <p className="text-sm text-yellow-800">
+              Vaša pretplata je otkazana i važi do{" "}
+              <strong>{formatDate(subscription.current_period_end)}</strong>.
+              Nakon toga nećete moći da generišete sadržaj.
+            </p>
+            <Link
+              href="/pricing"
+              className="shrink-0 rounded-lg bg-yellow-600 px-4 py-2 text-xs font-medium text-white hover:bg-yellow-700 transition-colors"
+            >
+              Obnovi plan
+            </Link>
+          </div>
+        )}
+
+        {subscription?.status === "past_due" && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 flex items-center justify-between">
+            <p className="text-sm text-red-700">
+              Plaćanje nije uspelo. Ažurirajte način plaćanja da nastavite.
+            </p>
+            <Link
+              href="/settings/subscription"
+              className="shrink-0 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              Ažuriraj plaćanje
+            </Link>
+          </div>
+        )}
+
+        {subscription?.status === "canceled" && (
+          <div className="mb-6 rounded-lg border border-gray-300 bg-gray-50 p-4 flex items-center justify-between">
+            <p className="text-sm text-gray-700">
+              Vaša pretplata je istekla. Izaberite novi plan.
+            </p>
+            <Link
+              href="/pricing"
+              className="shrink-0 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800 transition-colors"
+            >
+              Izaberite plan
+            </Link>
+          </div>
+        )}
+
         <h2 className="text-2xl font-bold text-gray-900 mb-1">
           Dobrodošli, {profile?.full_name?.split(" ")[0] || "korisniče"}
         </h2>
@@ -52,11 +152,17 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
-            href="/create/text"
-            className="group rounded-xl border border-gray-200 bg-white p-6 hover:border-blue-300 hover:shadow-sm transition-all"
+            href={canGenerate ? "/create/text" : "/pricing"}
+            className={`group rounded-xl border p-6 transition-all ${
+              canGenerate
+                ? "border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm"
+                : "border-gray-200 bg-gray-50 opacity-60"
+            }`}
           >
             <div className="text-2xl mb-3">T</div>
-            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+            <h3
+              className={`font-semibold ${canGenerate ? "text-gray-900 group-hover:text-blue-600" : "text-gray-500"}`}
+            >
               Kreiraj tekst
             </h3>
             <p className="text-sm text-gray-500 mt-1">
@@ -68,11 +174,17 @@ export default async function DashboardPage() {
           </Link>
 
           <Link
-            href="/create/image"
-            className="group rounded-xl border border-gray-200 bg-white p-6 hover:border-blue-300 hover:shadow-sm transition-all"
+            href={canGenerate ? "/create/image" : "/pricing"}
+            className={`group rounded-xl border p-6 transition-all ${
+              canGenerate
+                ? "border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm"
+                : "border-gray-200 bg-gray-50 opacity-60"
+            }`}
           >
             <div className="text-2xl mb-3">I</div>
-            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+            <h3
+              className={`font-semibold ${canGenerate ? "text-gray-900 group-hover:text-blue-600" : "text-gray-500"}`}
+            >
               Kreiraj sliku
             </h3>
             <p className="text-sm text-gray-500 mt-1">
@@ -84,11 +196,17 @@ export default async function DashboardPage() {
           </Link>
 
           <Link
-            href="/create/image-from-upload"
-            className="group rounded-xl border border-gray-200 bg-white p-6 hover:border-blue-300 hover:shadow-sm transition-all"
+            href={canGenerate ? "/create/image-from-upload" : "/pricing"}
+            className={`group rounded-xl border p-6 transition-all ${
+              canGenerate
+                ? "border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm"
+                : "border-gray-200 bg-gray-50 opacity-60"
+            }`}
           >
             <div className="text-2xl mb-3">P</div>
-            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+            <h3
+              className={`font-semibold ${canGenerate ? "text-gray-900 group-hover:text-blue-600" : "text-gray-500"}`}
+            >
               Kreiraj post
             </h3>
             <p className="text-sm text-gray-500 mt-1">

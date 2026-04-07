@@ -4,8 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { openai, TEXT_MODEL } from "@/lib/openai";
 import { CREDIT_COSTS, hasEnoughCredits, deductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { validatePrompt } from "@/lib/validation";
-import { retryAsync } from "@/lib/utils";
+import { checkSubscriptionAccess } from "@/lib/subscription";
+import { validatePrompt, getValidationMessage } from "@/lib/validation";
+import { retryAsync, withTimeout } from "@/lib/utils";
 import type { GenerateTextRequest, ApiResponse } from "@/types/api";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { Database } from "@/types/database";
@@ -41,12 +42,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const subStatus = await checkSubscriptionAccess(user.id);
+    if (!subStatus.hasAccess) {
+      return NextResponse.json<ApiResponse>(
+        { success: false, error: subStatus.message || "No active subscription" },
+        { status: 403 }
+      );
+    }
+
     const body: GenerateTextRequest = await request.json();
 
-    const promptError = validatePrompt(body.prompt);
-    if (promptError) {
+    const promptErrorKey = validatePrompt(body.prompt);
+    if (promptErrorKey) {
       return NextResponse.json<ApiResponse>(
-        { success: false, error: promptError },
+        { success: false, error: getValidationMessage(promptErrorKey) || promptErrorKey },
         { status: 400 }
       );
     }
@@ -98,14 +107,16 @@ export async function POST(request: NextRequest) {
         body.imageUrl
       );
 
-      const result = await retryAsync(async () => {
-        return await openai.chat.completions.create({
-          model: TEXT_MODEL,
-          messages,
-          max_tokens: 1500,
-          temperature: 0.8,
-        });
-      });
+      const result = await withTimeout(
+        retryAsync(async () => {
+          return await openai.chat.completions.create({
+            model: TEXT_MODEL,
+            messages,
+            max_tokens: 1500,
+            temperature: 0.8,
+          });
+        })
+      );
 
       const generatedText = result.choices[0]?.message?.content;
       if (!generatedText) {
@@ -152,12 +163,15 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", generation.id);
 
+      const isTimeout = errorMessage.includes("AI_TIMEOUT");
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          error: "Failed to generate text. Please try again later.",
+          error: isTimeout
+            ? "Generation timed out. Please try again."
+            : "Failed to generate text. Please try again later.",
         },
-        { status: 502 }
+        { status: isTimeout ? 504 : 502 }
       );
     }
   } catch (error) {

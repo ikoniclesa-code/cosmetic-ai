@@ -1,18 +1,40 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { MIN_PROMPT_LENGTH, MAX_PROMPT_LENGTH } from "@/lib/validation";
+
+function getErrorMessage(status: number, serverError?: string): string {
+  switch (status) {
+    case 401:
+      return "Niste prijavljeni. Prijavite se da biste nastavili.";
+    case 402:
+      return "Nemate dovoljno kredita.";
+    case 403:
+      return serverError?.toLowerCase().includes("subscription")
+        ? "Nemate aktivnu pretplatu. Izaberite plan da biste počeli."
+        : "Nemate pristup.";
+    case 429:
+      return "Previše zahteva. Sačekajte malo pa pokušajte ponovo.";
+    case 502:
+      return "AI servis trenutno nije dostupan. Krediti nisu oduzeti. Pokušajte ponovo.";
+    case 504:
+      return "Generisanje je trajalo predugo. Pokušajte ponovo.";
+    default:
+      return serverError || "Došlo je do greške. Pokušajte ponovo.";
+  }
+}
 
 export default function CreateImagePage() {
   const [prompt, setPrompt] = useState("");
   const [resultUrl, setResultUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorStatus, setErrorStatus] = useState(0);
   const [credits, setCredits] = useState<number | null>(null);
-  const submitRef = useRef<HTMLButtonElement>(null);
 
-  async function loadCredits() {
+  const loadCredits = useCallback(async () => {
     const supabase = createClient();
     const {
       data: { user },
@@ -25,21 +47,24 @@ export default function CreateImagePage() {
         .single();
       if (data) setCredits(data.credits);
     }
-  }
+  }, []);
 
-  useState(() => {
+  useEffect(() => {
     loadCredits();
-  });
+  }, [loadCredits]);
+
+  const promptLength = prompt.trim().length;
+  const isPromptValid =
+    promptLength >= MIN_PROMPT_LENGTH && promptLength <= MAX_PROMPT_LENGTH;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (loading || prompt.trim().length < 3) return;
+    if (loading || !isPromptValid) return;
 
     setLoading(true);
     setError("");
+    setErrorStatus(0);
     setResultUrl("");
-
-    if (submitRef.current) submitRef.current.disabled = true;
 
     try {
       const res = await fetch("/api/generate/image-from-prompt", {
@@ -51,16 +76,16 @@ export default function CreateImagePage() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error || "Greška pri generisanju slike.");
+        setErrorStatus(res.status);
+        setError(getErrorMessage(res.status, data.error));
       } else {
         setResultUrl(data.data.result_image_url);
         setCredits(data.data.credits_remaining);
       }
     } catch {
-      setError("Mrežna greška. Pokušajte ponovo.");
+      setError("Mrežna greška. Proverite internet konekciju.");
     } finally {
       setLoading(false);
-      if (submitRef.current) submitRef.current.disabled = false;
     }
   }
 
@@ -88,13 +113,25 @@ export default function CreateImagePage() {
       <div className="max-w-3xl mx-auto px-4 py-8">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="prompt"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Opis slike{" "}
-              <span className="text-gray-400">(min. 3 karaktera)</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="prompt"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Opis slike
+              </label>
+              <span
+                className={`text-xs ${
+                  promptLength > MAX_PROMPT_LENGTH
+                    ? "text-red-500"
+                    : promptLength >= MIN_PROMPT_LENGTH
+                      ? "text-green-600"
+                      : "text-gray-400"
+                }`}
+              >
+                {promptLength}/{MAX_PROMPT_LENGTH}
+              </span>
+            </div>
             <textarea
               id="prompt"
               rows={4}
@@ -103,24 +140,37 @@ export default function CreateImagePage() {
               placeholder="Npr: Elegantna anti-aging krema u zlatnoj tegli na mramornoj površini, meko osvetljenje, minimalistički stil."
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-y"
               disabled={loading}
+              maxLength={MAX_PROMPT_LENGTH + 100}
             />
+            {promptLength > 0 && promptLength < MIN_PROMPT_LENGTH && (
+              <p className="text-xs text-amber-600 mt-1">
+                Minimalno {MIN_PROMPT_LENGTH} karaktera
+              </p>
+            )}
           </div>
 
           <button
-            ref={submitRef}
             type="submit"
-            disabled={loading || prompt.trim().length < 3}
+            disabled={loading || !isPromptValid}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading
-              ? "Generišem sliku... (ovo može potrajati do 60s)"
-              : "Generiši sliku (14 kredita)"}
+              ? "Generisem sliku... (ovo može potrajati do 60s)"
+              : "Generisi sliku (14 kredita)"}
           </button>
         </form>
 
         {error && (
           <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
             <p className="text-sm text-red-700">{error}</p>
+            {(errorStatus === 402 || errorStatus === 403) && (
+              <Link
+                href="/pricing"
+                className="inline-block mt-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+              >
+                Pogledajte planove &rarr;
+              </Link>
+            )}
           </div>
         )}
 
@@ -128,7 +178,7 @@ export default function CreateImagePage() {
           <div className="mt-6 flex flex-col items-center py-12">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
             <p className="mt-4 text-sm text-gray-500">
-              AI generiše sliku, molimo sačekajte...
+              AI generise sliku, molimo sacekajte...
             </p>
           </div>
         )}

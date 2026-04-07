@@ -131,9 +131,31 @@ export interface TranslationKeys {
     forbidden: string;
     notFound: string;
     rateLimited: string;
+    rateLimitedWithTime: string;
     fileTooLarge: string;
     invalidFormat: string;
     serverError: string;
+    networkError: string;
+    timeoutError: string;
+    promptTooShort: string;
+    promptTooLong: string;
+    imageRequired: string;
+    promptRequired: string;
+    insufficientCredits: string;
+    insufficientCreditsDesc: string;
+    noSubscription: string;
+    aiServiceError: string;
+    aiServiceTimeout: string;
+    loginFailed: string;
+    loginInvalidCredentials: string;
+    registerEmailExists: string;
+    registerPasswordShort: string;
+    registerPasswordMismatch: string;
+    registerNameShort: string;
+    invalidEmail: string;
+    sessionExpired: string;
+    uploadFailed: string;
+    generationFailed: string;
   };
   admin: {
     title: string;
@@ -280,9 +302,31 @@ export const sr: TranslationKeys = {
     forbidden: "Nemate pristup ovoj stranici.",
     notFound: "Stranica nije pronađena.",
     rateLimited: "Previše zahteva. Sačekajte malo.",
+    rateLimitedWithTime: "Previše zahteva. Pokušajte ponovo za {seconds}s.",
     fileTooLarge: "Fajl je prevelik. Maksimalno 10 MB.",
     invalidFormat: "Nepodržan format. Dozvoljeni: JPG, PNG, WebP.",
     serverError: "Greška na serveru. Pokušajte ponovo kasnije.",
+    networkError: "Mrežna greška. Proverite internet konekciju.",
+    timeoutError: "Zahtev je istekao. Pokušajte ponovo.",
+    promptTooShort: "Prompt mora imati najmanje 3 karaktera.",
+    promptTooLong: "Prompt ne sme biti duži od 2000 karaktera.",
+    imageRequired: "Morate dodati sliku.",
+    promptRequired: "Morate uneti prompt.",
+    insufficientCredits: "Nemate dovoljno kredita.",
+    insufficientCreditsDesc: "Potrebno je {cost} kredita. Imate {current}.",
+    noSubscription: "Nemate aktivnu pretplatu. Izaberite plan da biste počeli.",
+    aiServiceError: "AI servis trenutno nije dostupan. Krediti nisu oduzeti.",
+    aiServiceTimeout: "Generisanje je trajalo predugo. Pokušajte ponovo.",
+    loginFailed: "Prijavljivanje nije uspelo. Pokušajte ponovo.",
+    loginInvalidCredentials: "Pogrešan email ili lozinka.",
+    registerEmailExists: "Korisnik sa ovim emailom već postoji.",
+    registerPasswordShort: "Lozinka mora imati najmanje 8 karaktera.",
+    registerPasswordMismatch: "Lozinke se ne poklapaju.",
+    registerNameShort: "Ime mora imati najmanje 2 karaktera.",
+    invalidEmail: "Unesite ispravnu email adresu.",
+    sessionExpired: "Sesija je istekla. Prijavite se ponovo.",
+    uploadFailed: "Otpremanje fajla nije uspelo. Pokušajte ponovo.",
+    generationFailed: "Generisanje nije uspelo. Pokušajte ponovo.",
   },
   admin: {
     title: "Admin Panel",

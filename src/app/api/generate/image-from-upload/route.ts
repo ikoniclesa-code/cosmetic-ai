@@ -9,8 +9,9 @@ import {
 } from "@/lib/gemini";
 import { CREDIT_COSTS, hasEnoughCredits, deductCredits } from "@/lib/credits";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { validatePrompt, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/validation";
-import { retryAsync } from "@/lib/utils";
+import { checkSubscriptionAccess } from "@/lib/subscription";
+import { validatePrompt, getValidationMessage, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/validation";
+import { retryAsync, withTimeout } from "@/lib/utils";
 import type { ApiResponse } from "@/types/api";
 import type { Database } from "@/types/database";
 
@@ -45,6 +46,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const subStatus = await checkSubscriptionAccess(user.id);
+    if (!subStatus.hasAccess) {
+      return NextResponse.json<ApiResponse>(
+        { success: false, error: subStatus.message || "No active subscription" },
+        { status: 403 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("image") as File | null;
     const prompt = formData.get("prompt") as string | null;
@@ -64,10 +73,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const promptError = validatePrompt(prompt);
-    if (promptError) {
+    const promptErrorKey = validatePrompt(prompt);
+    if (promptErrorKey) {
       return NextResponse.json<ApiResponse>(
-        { success: false, error: promptError },
+        { success: false, error: getValidationMessage(promptErrorKey) || promptErrorKey },
         { status: 400 }
       );
     }
@@ -158,9 +167,11 @@ export async function POST(request: NextRequest) {
 
       const model = getImageModel();
 
-      const result = await retryAsync(async () => {
-        return await model.generateContent(parts);
-      }, 5, 4000);
+      const result = await withTimeout(
+        retryAsync(async () => {
+          return await model.generateContent(parts);
+        }, 5, 4000)
+      );
 
       const imageResult = extractImageFromResponse(result);
       if (!imageResult) {
@@ -225,12 +236,15 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", generation.id);
 
+      const isTimeout = errorMessage.includes("AI_TIMEOUT");
       return NextResponse.json<ApiResponse>(
         {
           success: false,
-          error: "Failed to generate image. Please try again later.",
+          error: isTimeout
+            ? "Generation timed out. Please try again."
+            : "Failed to generate image. Please try again later.",
         },
-        { status: 502 }
+        { status: isTimeout ? 504 : 502 }
       );
     }
   } catch (error) {

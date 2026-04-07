@@ -47,8 +47,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith("/api/auth/")
-  );
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  ) || pathname.startsWith("/api/auth/");
 
   if (pathname.startsWith("/api/stripe/webhook")) {
     return supabaseResponse;

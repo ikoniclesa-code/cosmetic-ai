@@ -48,3 +48,23 @@ export async function retryAsync<T>(
 
   throw lastError;
 }
+
+const AI_TIMEOUT_MS = 60_000;
+
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = AI_TIMEOUT_MS
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("AI_TIMEOUT: Request timed out after 60 seconds"));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+}

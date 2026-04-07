@@ -12,8 +12,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const isFormValid = email.includes("@") && password.length >= 8;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading || !isFormValid) return;
+
     setError("");
     setLoading(true);
 
@@ -25,10 +29,15 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        if (authError.message.includes("Invalid login")) {
+        if (
+          authError.message.includes("Invalid login") ||
+          authError.message.includes("Invalid email or password")
+        ) {
           setError("Pogrešan email ili lozinka.");
+        } else if (authError.message.includes("rate")) {
+          setError("Previše pokušaja. Sačekajte malo.");
         } else {
-          setError(authError.message);
+          setError("Prijavljivanje nije uspelo. Pokušajte ponovo.");
         }
         return;
       }
@@ -36,7 +45,7 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Došlo je do greške. Pokušajte ponovo.");
+      setError("Mrežna greška. Proverite internet konekciju.");
     } finally {
       setLoading(false);
     }
@@ -60,7 +69,10 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Email adresa
             </label>
             <input
@@ -71,11 +83,16 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="vas@email.com"
+              disabled={loading}
+              autoComplete="email"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Lozinka
             </label>
             <input
@@ -87,12 +104,14 @@ export default function LoginPage() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Unesite lozinku"
               minLength={8}
+              disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isFormValid}
             className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? "Prijavljivanje..." : "Prijavite se"}
@@ -100,12 +119,18 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-sm space-y-2">
-          <Link href="/reset-password" className="text-blue-600 hover:text-blue-800">
+          <Link
+            href="/reset-password"
+            className="text-blue-600 hover:text-blue-800"
+          >
             Zaboravljena lozinka?
           </Link>
           <p className="text-gray-500">
             Nemate nalog?{" "}
-            <Link href="/register" className="text-blue-600 hover:text-blue-800 font-medium">
+            <Link
+              href="/register"
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
               Registrujte se
             </Link>
           </p>
